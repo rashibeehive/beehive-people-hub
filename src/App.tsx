@@ -13,6 +13,7 @@ import Reviews from "./pages/Reviews";
 import AdminEmployees from "./pages/AdminEmployees";
 import Profile from "./pages/Profile";
 import ComingSoon from "./pages/ComingSoon";
+import Overview from "./pages/Overview";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/admin/employees" element={<AdminEmployees />} />
               <Route path="/admin/talent" element={<ComingSoon title="Talent pool" />} />
               <Route path="/admin/cycles" element={<ComingSoon title="Review cycles" />} />
+              <Route path="/overview" element={<Overview />} />
             </Route>
             <Route path="*" element={<NotFound />} />
             </Routes>
