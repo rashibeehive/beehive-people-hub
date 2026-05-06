@@ -10,7 +10,7 @@ import {
   CalendarRange,
   Hexagon,
 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import { initials } from "@/lib/format";
 
 const navItems = [
@@ -61,7 +61,7 @@ function Item({
 }
 
 export function Sidebar() {
-  const { employee, isHrAdmin } = useAuth();
+  const { employee, isHrAdmin } = useCurrentUser();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-[200px] flex-col bg-sidebar text-sidebar-foreground">

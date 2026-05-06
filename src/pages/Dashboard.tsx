@@ -1,4 +1,4 @@
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import { firstName, formatTenure, gulfGreeting, currentQuarter } from "@/lib/format";
 import { ArrowRight, AlertTriangle } from "lucide-react";
 
@@ -41,7 +41,7 @@ const actions = [
 ];
 
 export default function Dashboard() {
-  const { employee } = useAuth();
+  const { employee } = useCurrentUser();
   if (!employee) return null;
   const { q, year } = currentQuarter();
 

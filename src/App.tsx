@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { CurrentUserProvider } from "@/context/CurrentUserContext";
 import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -48,7 +49,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
+          <CurrentUserProvider>
+            <Routes>
             <Route path="/login" element={<Login />} />
             <Route
               element={
@@ -69,7 +71,8 @@ const App = () => (
               <Route path="/admin/cycles" element={<ComingSoon title="Review cycles" />} />
             </Route>
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </CurrentUserProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
