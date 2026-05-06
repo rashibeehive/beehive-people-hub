@@ -191,13 +191,6 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "promotion_history_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       review_cycles: {
@@ -331,24 +324,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reviews_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reviews_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "employees"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "employees_public"
             referencedColumns: ["id"]
           },
         ]
@@ -383,71 +362,11 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_roles_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
     }
     Views: {
-      employees_public: {
-        Row: {
-          created_at: string | null
-          department: string | null
-          employee_id: string | null
-          employment_type: string | null
-          full_name: string | null
-          id: string | null
-          job_title: string | null
-          last_promotion_date: string | null
-          level_code: string | null
-          location: string | null
-          manager_email: string | null
-          start_date: string | null
-          track: string | null
-          updated_at: string | null
-          work_email: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          department?: string | null
-          employee_id?: string | null
-          employment_type?: string | null
-          full_name?: string | null
-          id?: string | null
-          job_title?: string | null
-          last_promotion_date?: string | null
-          level_code?: string | null
-          location?: string | null
-          manager_email?: string | null
-          start_date?: string | null
-          track?: string | null
-          updated_at?: string | null
-          work_email?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          department?: string | null
-          employee_id?: string | null
-          employment_type?: string | null
-          full_name?: string | null
-          id?: string | null
-          job_title?: string | null
-          last_promotion_date?: string | null
-          level_code?: string | null
-          location?: string | null
-          manager_email?: string | null
-          start_date?: string | null
-          track?: string | null
-          updated_at?: string | null
-          work_email?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       current_employee_id: { Args: never; Returns: string }
