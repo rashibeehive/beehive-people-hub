@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 
 interface Level {
   level_code: string;
@@ -98,7 +98,7 @@ function Track({
 }
 
 export default function Career() {
-  const { employee } = useAuth();
+  const { employee } = useCurrentUser();
   const [levels, setLevels] = useState<Level[]>([]);
 
   useEffect(() => {

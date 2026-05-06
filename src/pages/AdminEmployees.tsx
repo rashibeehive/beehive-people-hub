@@ -19,7 +19,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -55,7 +55,7 @@ interface Row {
 }
 
 export default function AdminEmployees() {
-  const { isHrAdmin } = useAuth();
+  const { isHrAdmin } = useCurrentUser();
   const [rows, setRows] = useState<Row[]>([]);
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState<string>("all");

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Briefcase } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import { supabase } from "@/integrations/supabase/client";
 import { initials, formatTenure } from "@/lib/format";
 
@@ -30,7 +30,7 @@ function Badge({ children, tone = "default" }: { children: React.ReactNode; tone
 }
 
 export default function Profile() {
-  const { employee } = useAuth();
+  const { employee } = useCurrentUser();
   const [promos, setPromos] = useState<Promotion[]>([]);
 
   useEffect(() => {
