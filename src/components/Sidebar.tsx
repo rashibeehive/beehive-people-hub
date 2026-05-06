@@ -9,6 +9,7 @@ import {
   UserCog,
   CalendarRange,
   Hexagon,
+  BarChart3,
 } from "lucide-react";
 import { useCurrentUser } from "@/context/CurrentUserContext";
 import { initials } from "@/lib/format";
@@ -22,6 +23,7 @@ const navItems = [
 ];
 
 const hrItems = [
+  { to: "/overview", label: "People Overview", icon: BarChart3 },
   { to: "/admin/talent", label: "Talent pool", icon: Users },
   { to: "/admin/employees", label: "Manage employees", icon: UserCog },
   { to: "/admin/cycles", label: "Review cycles", icon: CalendarRange },
