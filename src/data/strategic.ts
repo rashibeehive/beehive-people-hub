@@ -303,4 +303,11 @@ export const ACTIONS: {
     detail: "KSA expansion blocked on regulatory sign-off. Track weekly — unblocking this opens a new revenue lane.",
     link: "/goals?dept=Credit",
   },
+  {
+    severity: "monitor",
+    title: "NPL ratio tracking",
+    detail:
+      "Current NPL at 1.5%, within the 2.0% threshold. WCF KSA expansion and new borrower onboarding may apply upward pressure in Q3. Review monthly.",
+    link: "/goals?dept=Credit",
+  },
 ];
