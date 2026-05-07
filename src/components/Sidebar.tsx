@@ -13,6 +13,7 @@ import {
   Network,
 } from "lucide-react";
 import { useCurrentUser } from "@/context/CurrentUserContext";
+import logo from "@/assets/logo.png";
 import { initials } from "@/lib/format";
 
 const navItems = [
