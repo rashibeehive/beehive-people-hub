@@ -15,6 +15,7 @@ import Profile from "./pages/Profile";
 import ComingSoon from "./pages/ComingSoon";
 import Overview from "./pages/Overview";
 import OrgDesign from "./pages/OrgDesign";
+import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -66,7 +67,7 @@ const App = () => (
               <Route path="/career" element={<Career />} />
               <Route path="/reviews" element={<Reviews />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/goals" element={<ComingSoon title="Goals" />} />
+              <Route path="/goals" element={<Goals />} />
               <Route path="/explore" element={<ComingSoon title="Explore roles" />} />
               <Route path="/admin/employees" element={<AdminEmployees />} />
               <Route path="/admin/talent" element={<ComingSoon title="Talent pool" />} />

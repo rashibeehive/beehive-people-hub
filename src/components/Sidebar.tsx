@@ -20,7 +20,7 @@ const navItems = [
   { to: "/career", label: "Career path", icon: TrendingUp },
   { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
   { to: "/org-design", label: "Org Design", icon: Network },
-  { to: "/goals", label: "Goals", icon: Target, comingSoon: true },
+  { to: "/goals", label: "Goals", icon: Target },
   { to: "/explore", label: "Explore roles", icon: Compass, comingSoon: true },
 ];
 
