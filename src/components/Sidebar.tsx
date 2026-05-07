@@ -81,7 +81,7 @@ export function Sidebar() {
         <div className="space-y-0.5">
           {navItems
             .filter((it) => !it.hrOnly || isHrAdmin)
-            .map((it) => (
+            .map(({ hrOnly: _hr, ...it }) => (
               <Item key={it.to} {...it} />
             ))}
         </div>
