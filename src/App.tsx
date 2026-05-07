@@ -16,6 +16,7 @@ import ComingSoon from "./pages/ComingSoon";
 import Overview from "./pages/Overview";
 import OrgDesign from "./pages/OrgDesign";
 import Goals from "./pages/Goals";
+import StrategicOverview from "./pages/StrategicOverview";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
             >
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/strategic-overview" element={<StrategicOverview />} />
               <Route path="/career" element={<Career />} />
               <Route path="/reviews" element={<Reviews />} />
               <Route path="/profile" element={<Profile />} />
