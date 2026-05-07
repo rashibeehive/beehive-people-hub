@@ -141,7 +141,7 @@ function RevenueCommand() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-4 gap-3">
             {[
               { ...REVENUE.ytdDisbursed, name: "YTD Disbursed", tone: "" },
               { ...REVENUE.monthlyRunRate, name: "Monthly Run Rate", tone: "" },
@@ -155,6 +155,41 @@ function RevenueCommand() {
                 <div className="text-[10px] text-secondary-foreground/60">{s.label}</div>
               </div>
             ))}
+            {(() => {
+              const tone = nplTone(NPL.value);
+              const toneText =
+                tone === "green" ? "text-emerald-300" : tone === "amber" ? "text-amber-300" : "text-red-300";
+              const toneDot =
+                tone === "green" ? "bg-emerald-400" : tone === "amber" ? "bg-amber-400" : "bg-red-400";
+              const valuePct = Math.min((NPL.value / NPL.rangeMax) * 100, 100);
+              const thresholdPct = (NPL.threshold / NPL.rangeMax) * 100;
+              return (
+                <div className="rounded-lg bg-white/5 p-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-secondary-foreground/60">
+                    {NPL.label}
+                  </div>
+                  <div className={`mt-1 text-lg font-semibold ${toneText}`}>{NPL.value}%</div>
+                  <div className="text-[10px] text-secondary-foreground/60">{NPL.subLabel}</div>
+                  <div className="relative mt-2 h-1.5 rounded-full bg-white/10">
+                    <div
+                      className={`absolute left-0 top-0 h-full rounded-full ${toneDot}`}
+                      style={{ width: `${valuePct}%` }}
+                    />
+                    <div
+                      className="absolute top-[-3px] h-[14px] w-px bg-red-400"
+                      style={{ left: `${thresholdPct}%` }}
+                    />
+                  </div>
+                  <div className="mt-1 flex justify-between text-[9px] uppercase tracking-wider text-secondary-foreground/50">
+                    <span>0%</span>
+                    <span style={{ marginLeft: `${thresholdPct - 18}%` }} className="text-red-300/80">
+                      Threshold {NPL.threshold}%
+                    </span>
+                    <span>{NPL.rangeMax}%</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
