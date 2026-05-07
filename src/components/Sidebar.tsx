@@ -13,6 +13,7 @@ import {
   Network,
 } from "lucide-react";
 import { useCurrentUser } from "@/context/CurrentUserContext";
+import logo from "@/assets/logo.png";
 import { initials } from "@/lib/format";
 
 const navItems = [
@@ -70,16 +71,8 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-[200px] flex-col bg-sidebar text-sidebar-foreground">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 pb-4 pt-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-          <Hexagon className="h-4 w-4 text-primary-foreground" strokeWidth={2.5} />
-        </div>
-        <div className="leading-tight">
-          <div className="text-sm font-semibold text-sidebar-foreground">Beehive</div>
-          <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">
-            People Platform
-          </div>
-        </div>
+      <div className="px-4 pb-4 pt-5">
+        <img src={logo} alt="Beehive — an e& enterprise company" className="h-10 w-auto" />
       </div>
 
       {/* Nav */}
