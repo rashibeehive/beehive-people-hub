@@ -32,6 +32,8 @@ import {
   PILLARS,
   PROMO_READY,
   REVENUE,
+  NPL,
+  nplTone,
   REVENUE_INSIGHT,
   SALES_TEAMS,
   type ChipTone,
