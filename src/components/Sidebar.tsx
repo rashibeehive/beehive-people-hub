@@ -10,6 +10,7 @@ import {
   CalendarRange,
   Hexagon,
   BarChart3,
+  Network,
 } from "lucide-react";
 import { useCurrentUser } from "@/context/CurrentUserContext";
 import { initials } from "@/lib/format";
@@ -18,6 +19,7 @@ const navItems = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { to: "/career", label: "Career path", icon: TrendingUp },
   { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
+  { to: "/org-design", label: "Org Design", icon: Network },
   { to: "/goals", label: "Goals", icon: Target, comingSoon: true },
   { to: "/explore", label: "Explore roles", icon: Compass, comingSoon: true },
 ];
