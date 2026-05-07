@@ -14,6 +14,7 @@ import AdminEmployees from "./pages/AdminEmployees";
 import Profile from "./pages/Profile";
 import ComingSoon from "./pages/ComingSoon";
 import Overview from "./pages/Overview";
+import OrgDesign from "./pages/OrgDesign";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/admin/talent" element={<ComingSoon title="Talent pool" />} />
               <Route path="/admin/cycles" element={<ComingSoon title="Review cycles" />} />
               <Route path="/overview" element={<Overview />} />
+              <Route path="/org-design" element={<OrgDesign />} />
             </Route>
             <Route path="*" element={<NotFound />} />
             </Routes>
