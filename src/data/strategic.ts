@@ -21,6 +21,22 @@ export const REVENUE = {
   aheadOfTarget: { value: "+AED 137.6M", label: "annualised" },
 };
 
+// NPL ratio (Non-Performing Loans). Update value here only.
+export const NPL = {
+  label: "NPL Ratio",
+  value: 1.5, // percentage
+  rangeMax: 3, // 0–3% scale on indicator bar
+  threshold: 2.0, // red marker line
+  amberMax: 2.5, // 2.0–2.5 amber, >2.5 red
+  subLabel: "Target: under 2.0%",
+};
+
+export function nplTone(value: number, threshold = NPL.threshold, amberMax = NPL.amberMax): "green" | "amber" | "red" {
+  if (value < threshold) return "green";
+  if (value <= amberMax) return "amber";
+  return "red";
+}
+
 export type TeamStatus = "outperforming" | "at_risk" | "on_track";
 
 export const SALES_TEAMS: {
@@ -285,6 +301,13 @@ export const ACTIONS: {
     severity: "monitor",
     title: "WCF KSA regulatory approval",
     detail: "KSA expansion blocked on regulatory sign-off. Track weekly — unblocking this opens a new revenue lane.",
+    link: "/goals?dept=Credit",
+  },
+  {
+    severity: "monitor",
+    title: "NPL ratio tracking",
+    detail:
+      "Current NPL at 1.5%, within the 2.0% threshold. WCF KSA expansion and new borrower onboarding may apply upward pressure in Q3. Review monthly.",
     link: "/goals?dept=Credit",
   },
 ];
