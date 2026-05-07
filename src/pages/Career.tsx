@@ -6,8 +6,12 @@ import {
   COMPETENCY_DEFINITIONS,
   COMPETENCY_DESCRIPTORS,
   progressionFor,
+  DEPARTMENTS,
+  headcountFor,
+  type Department,
   type Track,
 } from "@/data/career";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type View = "level" | "competency";
 
@@ -41,10 +45,19 @@ function HeaderChips() {
   );
 }
 
-function ByLevel({ selected, setSelected }: { selected: string; setSelected: (c: string) => void }) {
+function ByLevel({
+  selected,
+  setSelected,
+  department,
+}: {
+  selected: string;
+  setSelected: (c: string) => void;
+  department: Department | "all";
+}) {
   const level = LEVELS.find((l) => l.code === selected)!;
   const meta = TRACK_META[level.track];
   const prog = progressionFor(level.code);
+  const headcount = headcountFor(level.code, department);
 
   const grouped: Record<Track, typeof LEVELS> = { IC: [], MG: [], EX: [] };
   LEVELS.forEach((l) => grouped[l.track].push(l));
@@ -105,8 +118,18 @@ function ByLevel({ selected, setSelected }: { selected: string; setSelected: (c:
             </div>
             <div>
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Headcount</div>
-              <div className="mt-1 text-2xl font-semibold text-secondary">{level.headcount}</div>
-              <div className="text-xs text-muted-foreground">employees at this level</div>
+              <div
+                className={`mt-1 text-2xl font-semibold ${
+                  headcount === 0 && department !== "all" ? "text-muted-foreground/50" : "text-secondary"
+                }`}
+              >
+                {headcount}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {department === "all"
+                  ? "employees at this level"
+                  : `in ${department} at this level`}
+              </div>
             </div>
           </div>
         </div>
@@ -297,6 +320,7 @@ export default function Career() {
   const [view, setView] = useState<View>("level");
   const [selectedLevel, setSelectedLevel] = useState("IC3");
   const [selectedComp, setSelectedComp] = useState("Problem Solving");
+  const [department, setDepartment] = useState<Department | "all">("all");
 
   return (
     <div>
@@ -310,6 +334,22 @@ export default function Career() {
           <p className="mt-3 text-xs text-muted-foreground">
             Track fork occurs at IC4 — employees choose between continuing the IC track or moving into people management (MG1).
           </p>
+          {view === "level" && (
+            <div className="mt-4 flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground">Department</label>
+              <Select value={department} onValueChange={(v) => setDepartment(v as Department | "all")}>
+                <SelectTrigger className="h-9 w-[220px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {DEPARTMENTS.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <div className="inline-flex shrink-0 rounded-md border bg-card p-1">
           {(["level", "competency"] as View[]).map((v) => (
@@ -329,7 +369,7 @@ export default function Career() {
       </header>
 
       {view === "level" ? (
-        <ByLevel selected={selectedLevel} setSelected={setSelectedLevel} />
+        <ByLevel selected={selectedLevel} setSelected={setSelectedLevel} department={department} />
       ) : (
         <ByCompetency selected={selectedComp} setSelected={setSelectedComp} />
       )}
