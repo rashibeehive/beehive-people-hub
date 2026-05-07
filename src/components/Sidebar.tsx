@@ -79,9 +79,11 @@ export function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-2">
         <div className="space-y-0.5">
-          {navItems.map((it) => (
-            <Item key={it.to} {...it} />
-          )).filter(Boolean)}
+          {navItems
+            .filter((it) => !it.hrOnly || isHrAdmin)
+            .map((it) => (
+              <Item key={it.to} {...it} />
+            ))}
         </div>
 
         {isHrAdmin && (
