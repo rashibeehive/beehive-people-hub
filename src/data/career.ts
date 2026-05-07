@@ -259,3 +259,38 @@ export function progressionFor(code: string) {
     develops: TIER_PROGRESSION[tier].develops,
   };
 }
+
+export const DEPARTMENTS = [
+  "Technology",
+  "Finance",
+  "HR",
+  "Credit",
+  "Operations",
+  "Business Development",
+  "Compliance",
+  "Marketing",
+  "Investor Relations",
+  "Executive",
+] as const;
+
+export type Department = (typeof DEPARTMENTS)[number];
+
+export const HEADCOUNT_BY_DEPT_LEVEL: Record<Department, Partial<Record<string, number>>> = {
+  Technology: { IC1: 1, IC2: 1, IC3: 2, IC4: 1, MG1: 1, MG2: 1, MG3: 1, MG4: 1, EX2: 1 },
+  Finance: { IC1: 1, IC2: 1, IC3: 1, IC4: 1, MG2: 1, EX2: 1 },
+  HR: { IC1: 1, IC2: 1, IC3: 1, IC4: 1, MG1: 1, EX1: 1 },
+  Credit: { IC2: 2, IC3: 2, IC4: 1, MG1: 1, MG3: 1 },
+  Operations: { IC1: 1, IC2: 1, IC3: 2, IC4: 1, MG1: 1, MG3: 1 },
+  "Business Development": { IC2: 2, IC3: 1, MG2: 1, MG4: 1 },
+  Compliance: { IC3: 1, IC4: 1, MG1: 1, MG3: 1 },
+  Marketing: { IC2: 1, IC3: 1, IC4: 1, MG2: 1 },
+  "Investor Relations": { IC3: 1, IC4: 1, MG3: 1 },
+  Executive: { EX2: 2, EX3: 1 },
+};
+
+export function headcountFor(levelCode: string, dept: Department | "all"): number {
+  if (dept === "all") {
+    return LEVELS.find((l) => l.code === levelCode)?.headcount ?? 0;
+  }
+  return HEADCOUNT_BY_DEPT_LEVEL[dept]?.[levelCode] ?? 0;
+}
