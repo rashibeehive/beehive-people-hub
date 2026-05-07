@@ -17,7 +17,8 @@ import logo from "@/assets/logo.png";
 import { initials } from "@/lib/format";
 
 const navItems = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { to: "/strategic-overview", label: "Strategic Overview", icon: LayoutDashboard, hrOnly: true },
+  { to: "/dashboard", label: "My Dashboard", icon: LayoutDashboard },
   { to: "/career", label: "Career path", icon: TrendingUp },
   { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
   { to: "/org-design", label: "Org Design", icon: Network },
@@ -80,7 +81,7 @@ export function Sidebar() {
         <div className="space-y-0.5">
           {navItems.map((it) => (
             <Item key={it.to} {...it} />
-          ))}
+          )).filter(Boolean)}
         </div>
 
         {isHrAdmin && (
