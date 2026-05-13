@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -667,8 +667,8 @@ function BudgetDrawer({
             </thead>
             <tbody>
               {GEOGRAPHIES.map((geo) => (
-                <>
-                  <tr key={`${geo}-h`} className={cn("border-b", GEO_TINTS[geo].headerBg)}>
+                <Fragment key={geo}>
+                  <tr className={cn("border-b", GEO_TINTS[geo].headerBg)}>
                     <td colSpan={months.length + 3} className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide">
                       {geo}
                     </td>
@@ -699,7 +699,7 @@ function BudgetDrawer({
                       </tr>
                     );
                   })}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
