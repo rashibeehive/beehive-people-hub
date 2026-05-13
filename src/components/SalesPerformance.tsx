@@ -1243,7 +1243,13 @@ function TimeToRelease() {
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {TTR_BUCKETS.map((b) => (
-                <Bar key={b} dataKey={b} fill={BUCKET_COLORS[b]} radius={[3, 3, 0, 0]} />
+                <Bar key={b} dataKey={b} radius={[3, 3, 0, 0]}>
+                  {data.map((row, i) => {
+                    const actual = (row as Record<string, number>)[b] as number;
+                    const ok = ttrMeetsTarget(b, actual);
+                    return <Cell key={`${b}-${i}`} fill={ok ? "#10B981" : "#EF4444"} />;
+                  })}
+                </Bar>
               ))}
               {TTR_BUCKETS.map((b) => (
                 <ReferenceLine
