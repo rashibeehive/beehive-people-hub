@@ -657,6 +657,72 @@ function FinanceWritten() {
 }
 
 function RollupCard({
+  ...args
+}: React.ComponentProps<typeof RollupCardImpl>) {
+  return <RollupCardImpl {...args} />;
+}
+
+const GEO_CHART_COLORS: Record<Geography, string> = {
+  UAE: "#F59E0B",
+  Oman: "#FB923C",
+  KSA: "#0EA5E9",
+};
+
+function FinanceTrendChart({
+  title,
+  data,
+  mode,
+}: {
+  title: string;
+  data: Array<Record<string, number | string>>;
+  mode: "grouped" | "stacked";
+}) {
+  return (
+    <Card className="p-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <div className="text-sm font-semibold text-secondary">{title}</div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">AEDMn</div>
+      </div>
+      <div className="h-72 w-full">
+        <ResponsiveContainer>
+          <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--background))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {(["UAE", "Oman", "KSA"] as Geography[]).map((g) => (
+              <Bar
+                key={g}
+                dataKey={g}
+                stackId={mode === "stacked" ? "geo" : undefined}
+                fill={GEO_CHART_COLORS[g]}
+                radius={mode === "stacked" ? 0 : [3, 3, 0, 0]}
+              />
+            ))}
+            <Line
+              type="monotone"
+              dataKey="Budget"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              name="Budget"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
+  );
+}
+
+function RollupCardImpl({
   label,
   actual,
   budget,
