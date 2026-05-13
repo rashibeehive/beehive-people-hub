@@ -12,8 +12,77 @@ import {
   type Track,
 } from "@/data/career";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSalesFramework } from "@/data/salesFramework";
+import { BenefitsMatrix } from "@/components/SalesFramework";
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info, GitFork } from "lucide-react";
 
 type View = "level" | "competency";
+
+function BdForkDiagram() {
+  return (
+    <div className="rounded-xl border bg-gradient-to-br from-blue-50/40 via-card to-purple-50/40 p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <GitFork className="h-4 w-4 text-primary" />
+        <h3 className="text-base font-semibold text-secondary">
+          Career Path Decision Point — IC4
+        </h3>
+        <TooltipProvider>
+          <UiTooltip>
+            <TooltipTrigger asChild>
+              <button className="text-muted-foreground hover:text-secondary" aria-label="More info">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              At this stage, employees may progress as a senior individual contributor or move into people management. Progression is based on performance, business need, and employee preference.
+            </TooltipContent>
+          </UiTooltip>
+        </TooltipProvider>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        {/* Left branch — IC */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-700">
+            IC Track — Specialist Path
+          </div>
+          <div className="mt-2 flex items-center gap-2 font-mono text-sm font-semibold text-secondary">
+            <span className="rounded bg-blue-500/10 px-2 py-0.5">IC5</span>
+            <span className="text-blue-500">→</span>
+            <span className="rounded bg-blue-500/10 px-2 py-0.5">IC6</span>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Associate Director, BD → Director, BD
+          </p>
+        </div>
+
+        {/* Fork node */}
+        <div className="flex flex-col items-center">
+          <div className="rounded-full border-2 border-primary bg-background px-3 py-1 font-mono text-sm font-semibold text-primary">
+            IC4
+          </div>
+          <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Fork</div>
+        </div>
+
+        {/* Right branch — MG */}
+        <div className="rounded-lg border border-purple-200 bg-purple-50/60 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-purple-700">
+            MG Track — People Manager Path
+          </div>
+          <div className="mt-2 flex items-center gap-2 font-mono text-sm font-semibold text-secondary">
+            <span className="rounded bg-purple-500/10 px-2 py-0.5">MG1</span>
+            <span className="text-purple-500">→</span>
+            <span className="rounded bg-purple-500/10 px-2 py-0.5">MG2</span>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Team Lead → Manager
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function aed(n: number) {
   return `AED ${n.toLocaleString()}`;
@@ -54,13 +123,26 @@ function ByLevel({
   setSelected: (c: string) => void;
   department: Department | "all";
 }) {
-  const level = LEVELS.find((l) => l.code === selected)!;
+  const isBD = department === "Business Development";
+  const { levels: bdLevels } = useSalesFramework();
+  // Build the active level list — BD overrides the global LEVELS for sidebar/details.
+  const activeLevels = isBD
+    ? bdLevels.map((l) => ({
+        code: l.code,
+        track: l.track,
+        title: l.title,
+        salaryMin: l.salaryMin,
+        salaryMax: l.salaryMax,
+        headcount: 0,
+      }))
+    : LEVELS;
+  const level = activeLevels.find((l) => l.code === selected) ?? activeLevels[0];
   const meta = TRACK_META[level.track];
   const prog = progressionFor(level.code);
   const headcount = headcountFor(level.code, department);
 
-  const grouped: Record<Track, typeof LEVELS> = { IC: [], MG: [], EX: [] };
-  LEVELS.forEach((l) => grouped[l.track].push(l));
+  const grouped: Record<Track, typeof activeLevels> = { IC: [], MG: [], EX: [] };
+  activeLevels.forEach((l) => grouped[l.track].push(l));
 
   return (
     <div className="grid grid-cols-[260px_1fr] gap-6">
@@ -134,6 +216,8 @@ function ByLevel({
           </div>
         </div>
 
+        {isBD && <BdForkDiagram />}
+
         {/* Competencies */}
         <div className="rounded-xl border bg-card p-6">
           <h2 className="text-base font-semibold text-secondary">
@@ -204,6 +288,13 @@ function ByLevel({
             </div>
           </div>
         </div>
+
+        {isBD && (
+          <BenefitsMatrix
+            title="Benefits Matrix · Business Development"
+            description="Per-level entitlements. Editable by the designated admin only. Synced with Org Design → Sales Framework."
+          />
+        )}
       </div>
     </div>
   );
