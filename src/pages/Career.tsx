@@ -12,6 +12,10 @@ import {
   type Track,
 } from "@/data/career";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSalesFramework } from "@/data/salesFramework";
+import { BenefitsMatrix } from "@/components/SalesFramework";
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info, GitFork } from "lucide-react";
 
 type View = "level" | "competency";
 
@@ -54,13 +58,26 @@ function ByLevel({
   setSelected: (c: string) => void;
   department: Department | "all";
 }) {
-  const level = LEVELS.find((l) => l.code === selected)!;
+  const isBD = department === "Business Development";
+  const { levels: bdLevels } = useSalesFramework();
+  // Build the active level list — BD overrides the global LEVELS for sidebar/details.
+  const activeLevels = isBD
+    ? bdLevels.map((l) => ({
+        code: l.code,
+        track: l.track,
+        title: l.title,
+        salaryMin: l.salaryMin,
+        salaryMax: l.salaryMax,
+        headcount: 0,
+      }))
+    : LEVELS;
+  const level = activeLevels.find((l) => l.code === selected) ?? activeLevels[0];
   const meta = TRACK_META[level.track];
   const prog = progressionFor(level.code);
   const headcount = headcountFor(level.code, department);
 
-  const grouped: Record<Track, typeof LEVELS> = { IC: [], MG: [], EX: [] };
-  LEVELS.forEach((l) => grouped[l.track].push(l));
+  const grouped: Record<Track, typeof activeLevels> = { IC: [], MG: [], EX: [] };
+  activeLevels.forEach((l) => grouped[l.track].push(l));
 
   return (
     <div className="grid grid-cols-[260px_1fr] gap-6">
@@ -134,6 +151,8 @@ function ByLevel({
           </div>
         </div>
 
+        {isBD && <BdForkDiagram />}
+
         {/* Competencies */}
         <div className="rounded-xl border bg-card p-6">
           <h2 className="text-base font-semibold text-secondary">
@@ -204,6 +223,13 @@ function ByLevel({
             </div>
           </div>
         </div>
+
+        {isBD && (
+          <BenefitsMatrix
+            title="Benefits Matrix · Business Development"
+            description="Per-level entitlements. Editable by the designated admin only. Synced with Org Design → Sales Framework."
+          />
+        )}
       </div>
     </div>
   );
