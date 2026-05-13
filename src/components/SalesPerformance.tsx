@@ -319,7 +319,7 @@ function FinanceWritten() {
             { value: "KSA", label: "KSA" },
           ]}
           value={geoFilter}
-          onChange={setGeoFilter}
+          onChange={(v) => setGeoFilter(v)}
         />
         <MultiSelect
           label="Product"
@@ -343,7 +343,7 @@ function FinanceWritten() {
             { value: "Quarter", label: "Quarter" },
           ]}
           value={period}
-          onChange={setPeriod}
+          onChange={(v) => setPeriod(v)}
         />
         <div className="ml-auto">
           <BudgetDrawer budgets={budgets} setBudgets={setBudgets} />
@@ -762,7 +762,7 @@ function ApprovedVsDisbursed() {
             { value: "KSA", label: "KSA" },
           ]}
           value={geoFilter}
-          onChange={setGeoFilter}
+          onChange={(v) => setGeoFilter(v)}
         />
         <MultiSelect
           label="Product"
@@ -779,7 +779,7 @@ function ApprovedVsDisbursed() {
             { value: "Quarterly", label: "Quarterly" },
           ]}
           value={period}
-          onChange={setPeriod}
+          onChange={(v) => setPeriod(v)}
         />
       </div>
 
@@ -894,7 +894,7 @@ function TimeToRelease() {
             { value: "Quarterly", label: "Quarterly" },
           ]}
           value={period}
-          onChange={setPeriod}
+          onChange={(v) => setPeriod(v)}
         />
       </div>
 
