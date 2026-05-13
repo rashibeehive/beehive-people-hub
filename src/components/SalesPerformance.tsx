@@ -858,7 +858,8 @@ function BudgetDrawer({
 function ApprovedVsDisbursed() {
   const [geoFilter, setGeoFilter] = useState<"All" | Geography>("All");
   const [productFilter, setProductFilter] = useState<string[]>([]);
-  const [period, setPeriod] = useState<"Monthly" | "Quarterly">("Monthly");
+  const [period, setPeriod] = useState<"Monthly" | "Quarterly" | "YTD">("Monthly");
+  const [productExpanded, setProductExpanded] = useState<Set<string>>(new Set());
 
   const filtered = APPROVED_DISBURSED.filter((r) => {
     if (geoFilter !== "All" && r.geo !== geoFilter) return false;
@@ -873,7 +874,8 @@ function ApprovedVsDisbursed() {
           label: m,
           rows: filtered.filter((r) => r.month === m),
         }))
-      : (() => {
+      : period === "Quarterly"
+      ? (() => {
           const map: Record<string, typeof filtered> = {};
           filtered.forEach((r) => {
             const [mon, yr] = r.month.split("-");
@@ -882,17 +884,49 @@ function ApprovedVsDisbursed() {
             (map[q] ||= []).push(r);
           });
           return Object.entries(map).map(([label, rows]) => ({ label, rows }));
-        })();
+        })()
+      : [{ label: "YTD", rows: filtered }];
 
   const chartData = buckets.map((b) => ({
     label: b.label,
     Approved: b.rows.reduce((s, r) => s + r.approved, 0),
     Disbursed: b.rows.reduce((s, r) => s + r.disbursed, 0),
+    Rate: (() => {
+      const a = b.rows.reduce((s, r) => s + r.approved, 0);
+      const d = b.rows.reduce((s, r) => s + r.disbursed, 0);
+      return a === 0 ? 0 : Math.round((d / a) * 100);
+    })(),
   }));
 
   const totalApproved = chartData.reduce((s, r) => s + r.Approved, 0);
   const totalDisbursed = chartData.reduce((s, r) => s + r.Disbursed, 0);
   const disbursedPct = pct(totalDisbursed, totalApproved);
+
+  // Avg time to disburse (days), derived from latest TTR month
+  const latestTTRMonth = TTR_MONTHS[TTR_MONTHS.length - 1];
+  const avgTTRDays = TTR_BUCKETS.reduce(
+    (s, b) => s + (TTR_DATA[latestTTRMonth][b] / 100) * TTR_BUCKET_MIDPOINTS[b],
+    0,
+  );
+
+  // Geo breakdown
+  const geoBreakdown = (["UAE", "Oman", "KSA"] as Geography[]).map((g) => {
+    const rows = filtered.filter((r) => r.geo === g);
+    const a = rows.reduce((s, r) => s + r.approved, 0);
+    const d = rows.reduce((s, r) => s + r.disbursed, 0);
+    return { geo: g, approved: a, disbursed: d, rate: a === 0 ? 0 : (d / a) * 100 };
+  });
+
+  // Product breakdown
+  const productBreakdown = ALL_PRODUCTS
+    .filter((p) => geoFilter === "All" || p.geo === geoFilter)
+    .filter((p) => productFilter.length === 0 || productFilter.includes(p.product))
+    .map((p) => {
+      const rows = filtered.filter((r) => r.geo === p.geo && r.product === p.product);
+      const a = rows.reduce((s, r) => s + r.approved, 0);
+      const d = rows.reduce((s, r) => s + r.disbursed, 0);
+      return { geo: p.geo, product: p.product, approved: a, disbursed: d, rate: a === 0 ? 0 : (d / a) * 100 };
+    });
 
   return (
     <div className="space-y-6">
@@ -920,40 +954,27 @@ function ApprovedVsDisbursed() {
           options={[
             { value: "Monthly", label: "Monthly" },
             { value: "Quarterly", label: "Quarterly" },
+            { value: "YTD", label: "YTD" },
           ]}
           value={period}
           onChange={(v) => setPeriod(v)}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Card className="p-5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Total Approved · {period === "Monthly" ? "last 6 months" : "by quarter"}
-          </div>
-          <div className="mt-1 text-3xl font-semibold tabular-nums text-secondary">
-            {fmt(totalApproved)} <span className="text-base text-muted-foreground">AEDMn</span>
-          </div>
-        </Card>
-        <Card className="p-5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Total Disbursed
-          </div>
-          <div className="mt-1 flex items-baseline gap-3">
-            <span className="text-3xl font-semibold tabular-nums text-secondary">
-              {fmt(totalDisbursed)}
-            </span>
-            <span className="text-base text-muted-foreground">AEDMn</span>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-semibold",
-                disbursedPct >= 75 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
-              )}
-            >
-              {disbursedPct.toFixed(0)}% of approved
-            </span>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryStat label="YTD Approved" value={`${fmt(totalApproved)}`} suffix="AEDMn" />
+        <SummaryStat label="YTD Disbursed" value={`${fmt(totalDisbursed)}`} suffix="AEDMn" />
+        <SummaryStat
+          label="YTD Disbursement Rate"
+          value={`${disbursedPct.toFixed(0)}%`}
+          tone={disbursedPct >= DISBURSEMENT_RATE_TARGET ? "green" : "amber"}
+          subline={`Target: ${DISBURSEMENT_RATE_TARGET}%`}
+        />
+        <SummaryStat
+          label="Avg Time to Disburse"
+          value={`${avgTTRDays.toFixed(1)} days`}
+          subline={`From ${latestTTRMonth} release distribution`}
+        />
       </div>
 
       <Card className="p-5">
@@ -962,10 +983,11 @@ function ApprovedVsDisbursed() {
         </div>
         <div className="h-80 w-full">
           <ResponsiveContainer>
-            <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
@@ -975,13 +997,162 @@ function ApprovedVsDisbursed() {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Approved" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Disbursed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Bar yAxisId="left" dataKey="Approved" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="Disbursed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="Rate" stroke="#10B981" strokeWidth={2} name="Disbursement %" />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {/* Geo breakdown table */}
+      <Card className="overflow-hidden">
+        <div className="border-b px-5 py-3 text-sm font-semibold text-secondary">
+          Geography Breakdown · YTD
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2 text-left">Geography</th>
+              <th className="px-4 py-2 text-right">Approved YTD</th>
+              <th className="px-4 py-2 text-right">Disbursed YTD</th>
+              <th className="px-4 py-2 text-right">Disbursement Rate</th>
+              <th className="px-4 py-2 text-center">vs Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {geoBreakdown.map((row) => (
+              <tr key={row.geo} className="border-b last:border-0">
+                <td className="px-4 py-2 font-medium">
+                  <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", GEO_TINTS[row.geo].dot)} />
+                  {row.geo}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums">{fmt(row.approved)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{fmt(row.disbursed)}</td>
+                <td className="px-4 py-2 text-right tabular-nums font-semibold">{row.rate.toFixed(0)}%</td>
+                <td className="px-4 py-2 text-center">
+                  <RAGPill ok={row.rate >= DISBURSEMENT_RATE_TARGET} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {/* Product breakdown table */}
+      <Card className="overflow-hidden">
+        <div className="border-b px-5 py-3 text-sm font-semibold text-secondary">
+          Product Breakdown · YTD
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2 text-left">Product</th>
+              <th className="px-4 py-2 text-right">Approved YTD</th>
+              <th className="px-4 py-2 text-right">Disbursed YTD</th>
+              <th className="px-4 py-2 text-right">Rate</th>
+              <th className="px-4 py-2 text-center">vs Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productBreakdown.map((row) => {
+              const key = `${row.geo}::${row.product}`;
+              const open = productExpanded.has(key);
+              return (
+                <Fragment key={key}>
+                  <tr className="border-b">
+                    <td className="px-4 py-2">
+                      <button
+                        className="flex items-center gap-1.5 font-medium hover:underline"
+                        onClick={() => {
+                          const next = new Set(productExpanded);
+                          if (open) next.delete(key); else next.add(key);
+                          setProductExpanded(next);
+                        }}
+                      >
+                        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        <span className={cn("inline-block h-2 w-2 rounded-full", GEO_TINTS[row.geo].dot)} />
+                        {row.product}
+                        <span className="text-[10px] text-muted-foreground">({row.geo})</span>
+                      </button>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(row.approved)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(row.disbursed)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums font-semibold">{row.rate.toFixed(0)}%</td>
+                    <td className="px-4 py-2 text-center">
+                      <RAGPill ok={row.rate >= DISBURSEMENT_RATE_TARGET} />
+                    </td>
+                  </tr>
+                  {open &&
+                    BD_REPS.filter((r) => r.geo === row.geo).map((rep) => {
+                      // Approximate per-rep contribution proportional to weekly entries share
+                      const repWeekly = WEEKLY_ENTRIES.filter(
+                        (w) => w.geo === row.geo && w.product === row.product && w.repId === rep.id,
+                      ).reduce((s, w) => s + w.amount, 0);
+                      const totalRepWeekly = WEEKLY_ENTRIES.filter(
+                        (w) => w.geo === row.geo && w.product === row.product,
+                      ).reduce((s, w) => s + w.amount, 0) || 1;
+                      const share = repWeekly / totalRepWeekly;
+                      if (share === 0) return null;
+                      return (
+                        <tr key={key + rep.id} className="border-b border-dashed bg-muted/10">
+                          <td className="px-4 py-1.5 pl-12 text-[11px] text-muted-foreground">{rep.name}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{fmt(row.approved * share)}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{fmt(row.disbursed * share)}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{row.rate.toFixed(0)}%</td>
+                          <td className="px-4 py-1.5"></td>
+                        </tr>
+                      );
+                    })}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  suffix,
+  subline,
+  tone,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  subline?: string;
+  tone?: "green" | "amber" | "red";
+}) {
+  const toneCls =
+    tone === "green" ? "text-emerald-600" :
+    tone === "amber" ? "text-amber-600" :
+    tone === "red" ? "text-red-600" : "text-secondary";
+  return (
+    <Card className="p-4">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={cn("mt-1 flex items-baseline gap-2 text-2xl font-semibold tabular-nums", toneCls)}>
+        {value}
+        {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+      </div>
+      {subline && <div className="mt-0.5 text-[11px] text-muted-foreground">{subline}</div>}
+    </Card>
+  );
+}
+
+function RAGPill({ ok }: { ok: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+      )}
+    >
+      {ok ? "On Target" : "Below"}
+    </span>
   );
 }
 
