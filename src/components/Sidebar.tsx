@@ -8,10 +8,10 @@ import {
   Users,
   UserCog,
   CalendarRange,
-  Hexagon,
   BarChart3,
   Network,
   LineChart,
+  Wallet,
 } from "lucide-react";
 import { useCurrentUser } from "@/context/CurrentUserContext";
 import logo from "@/assets/logo.png";
@@ -21,18 +21,16 @@ const navItems = [
   { to: "/strategic-overview", label: "Strategic Overview", icon: LayoutDashboard, hrOnly: true },
   { to: "/dashboard", label: "My Dashboard", icon: LayoutDashboard },
   { to: "/career", label: "Career path", icon: TrendingUp },
-  { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
   { to: "/org-design", label: "Org Design", icon: Network },
   { to: "/sales-performance", label: "Sales Performance", icon: LineChart },
   { to: "/goals", label: "Goals", icon: Target },
-  { to: "/explore", label: "Explore roles", icon: Compass, comingSoon: true },
 ];
 
 const hrItems = [
   { to: "/overview", label: "People Overview", icon: BarChart3 },
   { to: "/admin/talent", label: "Talent pool", icon: Users },
   { to: "/admin/employees", label: "Manage employees", icon: UserCog },
-  { to: "/admin/cycles", label: "Review cycles", icon: CalendarRange },
+  { to: "/admin/incentives", label: "Incentives", icon: Wallet },
 ];
 
 function Item({
