@@ -304,6 +304,53 @@ function FinanceWritten() {
 
   const monthCols = period === "Week" ? CURRENT.weeks : [CURRENT.monthLabel];
 
+  // ---- MoM data (Jan..May actual; Jun..Dec zero), per-geo + budget overlay ----
+  const [chartMode, setChartMode] = useState<"grouped" | "stacked">("grouped");
+
+  const monthlyByGeo = useMemo(() => {
+    const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return labels.map((m) => {
+      const row: Record<string, number | string> = { label: m };
+      let budget = 0;
+      (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => (row[g] = 0));
+      visibleProducts.forEach((p) => {
+        const key = pkey(p.geo, p.product);
+        let actual = 0;
+        if (m === "Jan") actual = JAN_TOTALS[key] ?? 0;
+        else if (m === "Feb" || m === "Mar" || m === "Apr") {
+          actual = (historical[key]?.[m as "Feb" | "Mar" | "Apr"]) ?? 0;
+        } else if (m === CURRENT.monthLabel) {
+          actual = monthSum(p.geo, p.product);
+        }
+        row[p.geo] = (row[p.geo] as number) + actual;
+        budget += budgets[key]?.[m] ?? 0;
+      });
+      row.Budget = budget;
+      return row;
+    });
+  }, [visibleProducts, historical, weekly, budgets, repFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const quarterlyByGeo = useMemo(() => {
+    const quarters: Record<string, string[]> = {
+      Q1: ["Jan", "Feb", "Mar"],
+      Q2: ["Apr", "May", "Jun"],
+      Q3: ["Jul", "Aug", "Sep"],
+      Q4: ["Oct", "Nov", "Dec"],
+    };
+    return Object.entries(quarters).map(([q, months]) => {
+      const row: Record<string, number | string> = { label: q, UAE: 0, Oman: 0, KSA: 0, Budget: 0 };
+      months.forEach((m) => {
+        const mr = monthlyByGeo.find((x) => x.label === m);
+        if (!mr) return;
+        (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => {
+          row[g] = (row[g] as number) + (mr[g] as number);
+        });
+        row.Budget = (row.Budget as number) + (mr.Budget as number);
+      });
+      return row;
+    });
+  }, [monthlyByGeo]);
+
   return (
     <div className="space-y-6">
       {/* Rollup cards */}
