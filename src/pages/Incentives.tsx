@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { Fragment, useMemo, useState, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -379,9 +379,8 @@ function BDTable({ rows }: { rows: BDSummary[] }) {
         </TableHeader>
         <TableBody>
           {rows.map((r) => (
-            <>
+            <Fragment key={r.bdName}>
               <TableRow
-                key={r.bdName}
                 className="cursor-pointer"
                 onClick={() => setOpen(open === r.bdName ? null : r.bdName)}
               >
@@ -427,13 +426,13 @@ function BDTable({ rows }: { rows: BDSummary[] }) {
                 </TableCell>
               </TableRow>
               {open === r.bdName && (
-                <TableRow key={r.bdName + "-x"}>
+                <TableRow>
                   <TableCell colSpan={12} className="bg-muted/40">
                     <BDDetail row={r} />
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           ))}
         </TableBody>
       </Table>
