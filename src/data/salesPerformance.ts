@@ -65,6 +65,13 @@ export const CURRENT = {
 
 export const HISTORICAL_MONTHS = ["Feb", "Mar", "Apr"] as const;
 
+/** Full-year month labels for MoM/QoQ visualisations. */
+export const YEAR_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+export type YearMonth = (typeof YEAR_MONTHS)[number];
+
 export type ProductKey = string; // `${geo}::${product}`
 export const pkey = (geo: Geography, product: string): ProductKey => `${geo}::${product}`;
 
@@ -78,6 +85,18 @@ export const HISTORICAL_TOTALS: Record<ProductKey, Record<(typeof HISTORICAL_MON
   [pkey("KSA", "GIB TF")]:           { Feb:  6.1, Mar:  7.8, Apr:  9.4 },
   [pkey("KSA", "GIB WCF")]:          { Feb:  3.2, Mar:  4.0, Apr:  5.1 },
   [pkey("KSA", "Themar-TF")]:        { Feb:  2.0, Mar:  2.7, Apr:  3.6 },
+};
+
+/** Optional Jan totals per product (AEDMn) — used by MoM/QoQ charts. */
+export const JAN_TOTALS: Record<ProductKey, number> = {
+  [pkey("UAE", "TF")]:               34.5,
+  [pkey("UAE", "EDB TF")]:           10.8,
+  [pkey("UAE", "WCF Utilisation")]:  16.4,
+  [pkey("UAE", "WCF Activation")]:    3.6,
+  [pkey("Oman", "TF")]:               7.6,
+  [pkey("KSA", "GIB TF")]:            5.2,
+  [pkey("KSA", "GIB WCF")]:           2.7,
+  [pkey("KSA", "Themar-TF")]:         1.6,
 };
 
 /** Current-month weekly entries: per product per BD rep per week (AEDMn). */
@@ -147,6 +166,21 @@ export const MONTHLY_BUDGETS: Record<ProductKey, Record<string, number>> = {
 };
 
 export const ANNUAL_TARGET = 1000; // AEDMn (AED 1B)
+
+/** Disbursement rate target (%). */
+export const DISBURSEMENT_RATE_TARGET = 75;
+
+/**
+ * Derived "average time to disburse" in days, from the TTR bucket distribution
+ * of the most recent month. Each bucket is mapped to a midpoint in days.
+ */
+export const TTR_BUCKET_MIDPOINTS = {
+  "0–7 Days":   3.5,
+  "8–14 Days": 11,
+  "15–21 Days": 18,
+  "22–28 Days": 25,
+  "28+ Days":   32,
+} as const;
 
 // ===================== Section 2 =====================
 // Approved vs Disbursed monthly (AEDMn) — last 6 months.
