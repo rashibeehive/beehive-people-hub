@@ -402,6 +402,31 @@ function FinanceWritten() {
         </div>
       </div>
 
+      {/* MoM + QoQ charts */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Bars:</span>
+        <PillToggle
+          options={[
+            { value: "grouped", label: "Grouped" },
+            { value: "stacked", label: "Stacked" },
+          ]}
+          value={chartMode}
+          onChange={(v) => setChartMode(v)}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <FinanceTrendChart
+          title={`MoM Finance Written · ${CURRENT.year}`}
+          data={monthlyByGeo}
+          mode={chartMode}
+        />
+        <FinanceTrendChart
+          title={`QoQ Finance Written · ${CURRENT.year}`}
+          data={quarterlyByGeo}
+          mode={chartMode}
+        />
+      </div>
+
       {/* Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
