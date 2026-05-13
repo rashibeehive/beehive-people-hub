@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -9,6 +10,8 @@ import {
   ResponsiveContainer,
   Legend,
   ReferenceLine,
+  ComposedChart,
+  Line,
 } from "recharts";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -42,13 +45,16 @@ import {
   AD_MONTHS,
   BD_REPS,
   CURRENT,
+  DISBURSEMENT_RATE_TARGET,
   GEO_TINTS,
   GEOGRAPHIES,
   HISTORICAL_MONTHS,
   HISTORICAL_TOTALS,
+  JAN_TOTALS,
   MONTHLY_BUDGETS,
   PRODUCTS_BY_GEO,
   TTR_BUCKETS,
+  TTR_BUCKET_MIDPOINTS,
   TTR_DATA,
   TTR_MONTHS,
   TTR_TARGETS,
@@ -299,6 +305,53 @@ function FinanceWritten() {
 
   const monthCols = period === "Week" ? CURRENT.weeks : [CURRENT.monthLabel];
 
+  // ---- MoM data (Jan..May actual; Jun..Dec zero), per-geo + budget overlay ----
+  const [chartMode, setChartMode] = useState<"grouped" | "stacked">("grouped");
+
+  const monthlyByGeo = useMemo(() => {
+    const labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return labels.map((m) => {
+      const row: Record<string, number | string> = { label: m };
+      let budget = 0;
+      (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => (row[g] = 0));
+      visibleProducts.forEach((p) => {
+        const key = pkey(p.geo, p.product);
+        let actual = 0;
+        if (m === "Jan") actual = JAN_TOTALS[key] ?? 0;
+        else if (m === "Feb" || m === "Mar" || m === "Apr") {
+          actual = (historical[key]?.[m as "Feb" | "Mar" | "Apr"]) ?? 0;
+        } else if (m === CURRENT.monthLabel) {
+          actual = monthSum(p.geo, p.product);
+        }
+        row[p.geo] = (row[p.geo] as number) + actual;
+        budget += budgets[key]?.[m] ?? 0;
+      });
+      row.Budget = budget;
+      return row;
+    });
+  }, [visibleProducts, historical, weekly, budgets, repFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const quarterlyByGeo = useMemo(() => {
+    const quarters: Record<string, string[]> = {
+      Q1: ["Jan", "Feb", "Mar"],
+      Q2: ["Apr", "May", "Jun"],
+      Q3: ["Jul", "Aug", "Sep"],
+      Q4: ["Oct", "Nov", "Dec"],
+    };
+    return Object.entries(quarters).map(([q, months]) => {
+      const row: Record<string, number | string> = { label: q, UAE: 0, Oman: 0, KSA: 0, Budget: 0 };
+      months.forEach((m) => {
+        const mr = monthlyByGeo.find((x) => x.label === m);
+        if (!mr) return;
+        (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => {
+          row[g] = (row[g] as number) + (mr[g] as number);
+        });
+        row.Budget = (row.Budget as number) + (mr.Budget as number);
+      });
+      return row;
+    });
+  }, [monthlyByGeo]);
+
   return (
     <div className="space-y-6">
       {/* Rollup cards */}
@@ -348,6 +401,31 @@ function FinanceWritten() {
         <div className="ml-auto">
           <BudgetDrawer budgets={budgets} setBudgets={setBudgets} />
         </div>
+      </div>
+
+      {/* MoM + QoQ charts */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Bars:</span>
+        <PillToggle
+          options={[
+            { value: "grouped", label: "Grouped" },
+            { value: "stacked", label: "Stacked" },
+          ]}
+          value={chartMode}
+          onChange={(v) => setChartMode(v)}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <FinanceTrendChart
+          title={`MoM Finance Written · ${CURRENT.year}`}
+          data={monthlyByGeo}
+          mode={chartMode}
+        />
+        <FinanceTrendChart
+          title={`QoQ Finance Written · ${CURRENT.year}`}
+          data={quarterlyByGeo}
+          mode={chartMode}
+        />
       </div>
 
       {/* Table */}
@@ -580,6 +658,72 @@ function FinanceWritten() {
 }
 
 function RollupCard({
+  ...args
+}: React.ComponentProps<typeof RollupCardImpl>) {
+  return <RollupCardImpl {...args} />;
+}
+
+const GEO_CHART_COLORS: Record<Geography, string> = {
+  UAE: "#F59E0B",
+  Oman: "#FB923C",
+  KSA: "#0EA5E9",
+};
+
+function FinanceTrendChart({
+  title,
+  data,
+  mode,
+}: {
+  title: string;
+  data: Array<Record<string, number | string>>;
+  mode: "grouped" | "stacked";
+}) {
+  return (
+    <Card className="p-4">
+      <div className="mb-2 flex items-baseline justify-between">
+        <div className="text-sm font-semibold text-secondary">{title}</div>
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">AEDMn</div>
+      </div>
+      <div className="h-72 w-full">
+        <ResponsiveContainer>
+          <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--background))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {(["UAE", "Oman", "KSA"] as Geography[]).map((g) => (
+              <Bar
+                key={g}
+                dataKey={g}
+                stackId={mode === "stacked" ? "geo" : undefined}
+                fill={GEO_CHART_COLORS[g]}
+                radius={mode === "stacked" ? 0 : [3, 3, 0, 0]}
+              />
+            ))}
+            <Line
+              type="monotone"
+              dataKey="Budget"
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              name="Budget"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </Card>
+  );
+}
+
+function RollupCardImpl({
   label,
   actual,
   budget,
@@ -715,7 +859,8 @@ function BudgetDrawer({
 function ApprovedVsDisbursed() {
   const [geoFilter, setGeoFilter] = useState<"All" | Geography>("All");
   const [productFilter, setProductFilter] = useState<string[]>([]);
-  const [period, setPeriod] = useState<"Monthly" | "Quarterly">("Monthly");
+  const [period, setPeriod] = useState<"Monthly" | "Quarterly" | "YTD">("Monthly");
+  const [productExpanded, setProductExpanded] = useState<Set<string>>(new Set());
 
   const filtered = APPROVED_DISBURSED.filter((r) => {
     if (geoFilter !== "All" && r.geo !== geoFilter) return false;
@@ -730,7 +875,8 @@ function ApprovedVsDisbursed() {
           label: m,
           rows: filtered.filter((r) => r.month === m),
         }))
-      : (() => {
+      : period === "Quarterly"
+      ? (() => {
           const map: Record<string, typeof filtered> = {};
           filtered.forEach((r) => {
             const [mon, yr] = r.month.split("-");
@@ -739,17 +885,49 @@ function ApprovedVsDisbursed() {
             (map[q] ||= []).push(r);
           });
           return Object.entries(map).map(([label, rows]) => ({ label, rows }));
-        })();
+        })()
+      : [{ label: "YTD", rows: filtered }];
 
   const chartData = buckets.map((b) => ({
     label: b.label,
     Approved: b.rows.reduce((s, r) => s + r.approved, 0),
     Disbursed: b.rows.reduce((s, r) => s + r.disbursed, 0),
+    Rate: (() => {
+      const a = b.rows.reduce((s, r) => s + r.approved, 0);
+      const d = b.rows.reduce((s, r) => s + r.disbursed, 0);
+      return a === 0 ? 0 : Math.round((d / a) * 100);
+    })(),
   }));
 
   const totalApproved = chartData.reduce((s, r) => s + r.Approved, 0);
   const totalDisbursed = chartData.reduce((s, r) => s + r.Disbursed, 0);
   const disbursedPct = pct(totalDisbursed, totalApproved);
+
+  // Avg time to disburse (days), derived from latest TTR month
+  const latestTTRMonth = TTR_MONTHS[TTR_MONTHS.length - 1];
+  const avgTTRDays = TTR_BUCKETS.reduce(
+    (s, b) => s + (TTR_DATA[latestTTRMonth][b] / 100) * TTR_BUCKET_MIDPOINTS[b],
+    0,
+  );
+
+  // Geo breakdown
+  const geoBreakdown = (["UAE", "Oman", "KSA"] as Geography[]).map((g) => {
+    const rows = filtered.filter((r) => r.geo === g);
+    const a = rows.reduce((s, r) => s + r.approved, 0);
+    const d = rows.reduce((s, r) => s + r.disbursed, 0);
+    return { geo: g, approved: a, disbursed: d, rate: a === 0 ? 0 : (d / a) * 100 };
+  });
+
+  // Product breakdown
+  const productBreakdown = ALL_PRODUCTS
+    .filter((p) => geoFilter === "All" || p.geo === geoFilter)
+    .filter((p) => productFilter.length === 0 || productFilter.includes(p.product))
+    .map((p) => {
+      const rows = filtered.filter((r) => r.geo === p.geo && r.product === p.product);
+      const a = rows.reduce((s, r) => s + r.approved, 0);
+      const d = rows.reduce((s, r) => s + r.disbursed, 0);
+      return { geo: p.geo, product: p.product, approved: a, disbursed: d, rate: a === 0 ? 0 : (d / a) * 100 };
+    });
 
   return (
     <div className="space-y-6">
@@ -777,40 +955,27 @@ function ApprovedVsDisbursed() {
           options={[
             { value: "Monthly", label: "Monthly" },
             { value: "Quarterly", label: "Quarterly" },
+            { value: "YTD", label: "YTD" },
           ]}
           value={period}
           onChange={(v) => setPeriod(v)}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Card className="p-5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Total Approved · {period === "Monthly" ? "last 6 months" : "by quarter"}
-          </div>
-          <div className="mt-1 text-3xl font-semibold tabular-nums text-secondary">
-            {fmt(totalApproved)} <span className="text-base text-muted-foreground">AEDMn</span>
-          </div>
-        </Card>
-        <Card className="p-5">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Total Disbursed
-          </div>
-          <div className="mt-1 flex items-baseline gap-3">
-            <span className="text-3xl font-semibold tabular-nums text-secondary">
-              {fmt(totalDisbursed)}
-            </span>
-            <span className="text-base text-muted-foreground">AEDMn</span>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-xs font-semibold",
-                disbursedPct >= 75 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
-              )}
-            >
-              {disbursedPct.toFixed(0)}% of approved
-            </span>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryStat label="YTD Approved" value={`${fmt(totalApproved)}`} suffix="AEDMn" />
+        <SummaryStat label="YTD Disbursed" value={`${fmt(totalDisbursed)}`} suffix="AEDMn" />
+        <SummaryStat
+          label="YTD Disbursement Rate"
+          value={`${disbursedPct.toFixed(0)}%`}
+          tone={disbursedPct >= DISBURSEMENT_RATE_TARGET ? "green" : "amber"}
+          subline={`Target: ${DISBURSEMENT_RATE_TARGET}%`}
+        />
+        <SummaryStat
+          label="Avg Time to Disburse"
+          value={`${avgTTRDays.toFixed(1)} days`}
+          subline={`From ${latestTTRMonth} release distribution`}
+        />
       </div>
 
       <Card className="p-5">
@@ -819,10 +984,11 @@ function ApprovedVsDisbursed() {
         </div>
         <div className="h-80 w-full">
           <ResponsiveContainer>
-            <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--background))",
@@ -832,13 +998,162 @@ function ApprovedVsDisbursed() {
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Approved" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Disbursed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Bar yAxisId="left" dataKey="Approved" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="Disbursed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="Rate" stroke="#10B981" strokeWidth={2} name="Disbursement %" />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </Card>
+
+      {/* Geo breakdown table */}
+      <Card className="overflow-hidden">
+        <div className="border-b px-5 py-3 text-sm font-semibold text-secondary">
+          Geography Breakdown · YTD
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2 text-left">Geography</th>
+              <th className="px-4 py-2 text-right">Approved YTD</th>
+              <th className="px-4 py-2 text-right">Disbursed YTD</th>
+              <th className="px-4 py-2 text-right">Disbursement Rate</th>
+              <th className="px-4 py-2 text-center">vs Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {geoBreakdown.map((row) => (
+              <tr key={row.geo} className="border-b last:border-0">
+                <td className="px-4 py-2 font-medium">
+                  <span className={cn("mr-2 inline-block h-2 w-2 rounded-full", GEO_TINTS[row.geo].dot)} />
+                  {row.geo}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums">{fmt(row.approved)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{fmt(row.disbursed)}</td>
+                <td className="px-4 py-2 text-right tabular-nums font-semibold">{row.rate.toFixed(0)}%</td>
+                <td className="px-4 py-2 text-center">
+                  <RAGPill ok={row.rate >= DISBURSEMENT_RATE_TARGET} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+
+      {/* Product breakdown table */}
+      <Card className="overflow-hidden">
+        <div className="border-b px-5 py-3 text-sm font-semibold text-secondary">
+          Product Breakdown · YTD
+        </div>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/30 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2 text-left">Product</th>
+              <th className="px-4 py-2 text-right">Approved YTD</th>
+              <th className="px-4 py-2 text-right">Disbursed YTD</th>
+              <th className="px-4 py-2 text-right">Rate</th>
+              <th className="px-4 py-2 text-center">vs Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            {productBreakdown.map((row) => {
+              const key = `${row.geo}::${row.product}`;
+              const open = productExpanded.has(key);
+              return (
+                <Fragment key={key}>
+                  <tr className="border-b">
+                    <td className="px-4 py-2">
+                      <button
+                        className="flex items-center gap-1.5 font-medium hover:underline"
+                        onClick={() => {
+                          const next = new Set(productExpanded);
+                          if (open) next.delete(key); else next.add(key);
+                          setProductExpanded(next);
+                        }}
+                      >
+                        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        <span className={cn("inline-block h-2 w-2 rounded-full", GEO_TINTS[row.geo].dot)} />
+                        {row.product}
+                        <span className="text-[10px] text-muted-foreground">({row.geo})</span>
+                      </button>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(row.approved)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{fmt(row.disbursed)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums font-semibold">{row.rate.toFixed(0)}%</td>
+                    <td className="px-4 py-2 text-center">
+                      <RAGPill ok={row.rate >= DISBURSEMENT_RATE_TARGET} />
+                    </td>
+                  </tr>
+                  {open &&
+                    BD_REPS.filter((r) => r.geo === row.geo).map((rep) => {
+                      // Approximate per-rep contribution proportional to weekly entries share
+                      const repWeekly = WEEKLY_ENTRIES.filter(
+                        (w) => w.geo === row.geo && w.product === row.product && w.repId === rep.id,
+                      ).reduce((s, w) => s + w.amount, 0);
+                      const totalRepWeekly = WEEKLY_ENTRIES.filter(
+                        (w) => w.geo === row.geo && w.product === row.product,
+                      ).reduce((s, w) => s + w.amount, 0) || 1;
+                      const share = repWeekly / totalRepWeekly;
+                      if (share === 0) return null;
+                      return (
+                        <tr key={key + rep.id} className="border-b border-dashed bg-muted/10">
+                          <td className="px-4 py-1.5 pl-12 text-[11px] text-muted-foreground">{rep.name}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{fmt(row.approved * share)}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{fmt(row.disbursed * share)}</td>
+                          <td className="px-4 py-1.5 text-right text-[11px] tabular-nums">{row.rate.toFixed(0)}%</td>
+                          <td className="px-4 py-1.5"></td>
+                        </tr>
+                      );
+                    })}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
     </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  suffix,
+  subline,
+  tone,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  subline?: string;
+  tone?: "green" | "amber" | "red";
+}) {
+  const toneCls =
+    tone === "green" ? "text-emerald-600" :
+    tone === "amber" ? "text-amber-600" :
+    tone === "red" ? "text-red-600" : "text-secondary";
+  return (
+    <Card className="p-4">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={cn("mt-1 flex items-baseline gap-2 text-2xl font-semibold tabular-nums", toneCls)}>
+        {value}
+        {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+      </div>
+      {subline && <div className="mt-0.5 text-[11px] text-muted-foreground">{subline}</div>}
+    </Card>
+  );
+}
+
+function RAGPill({ ok }: { ok: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+      )}
+    >
+      {ok ? "On Target" : "Below"}
+    </span>
   );
 }
 
@@ -928,7 +1243,13 @@ function TimeToRelease() {
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {TTR_BUCKETS.map((b) => (
-                <Bar key={b} dataKey={b} fill={BUCKET_COLORS[b]} radius={[3, 3, 0, 0]} />
+                <Bar key={b} dataKey={b} radius={[3, 3, 0, 0]}>
+                  {data.map((row, i) => {
+                    const actual = (row as Record<string, number>)[b] as number;
+                    const ok = ttrMeetsTarget(b, actual);
+                    return <Cell key={`${b}-${i}`} fill={ok ? "#10B981" : "#EF4444"} />;
+                  })}
+                </Bar>
               ))}
               {TTR_BUCKETS.map((b) => (
                 <ReferenceLine
@@ -959,6 +1280,8 @@ function TimeToRelease() {
               <th className="px-4 py-2 text-left">Bucket</th>
               <th className="px-4 py-2 text-right">Target</th>
               <th className="px-4 py-2 text-right">{latest.label} Actual</th>
+              <th className="px-4 py-2 text-right">Delta</th>
+              <th className="px-4 py-2 text-center">Trend (last 5m)</th>
               <th className="px-4 py-2 text-center">Status</th>
             </tr>
           </thead>
@@ -966,6 +1289,8 @@ function TimeToRelease() {
             {TTR_BUCKETS.map((b) => {
               const actual = TTR_DATA[TTR_MONTHS[TTR_MONTHS.length - 1]][b];
               const ok = ttrMeetsTarget(b, actual);
+              const series = TTR_MONTHS.map((m) => TTR_DATA[m][b]);
+              const delta = actual - TTR_TARGETS[b];
               return (
                 <tr key={b} className="border-b last:border-0">
                   <td className="px-4 py-2 font-medium text-foreground">
@@ -977,6 +1302,19 @@ function TimeToRelease() {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{TTR_TARGETS[b]}%</td>
                   <td className="px-4 py-2 text-right font-semibold tabular-nums">{actual}%</td>
+                  <td className="px-4 py-2 text-right">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+                        ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+                      )}
+                    >
+                      {delta > 0 ? "+" : ""}{delta}pp
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Sparkline values={series} color={ok ? "#10B981" : "#EF4444"} />
+                  </td>
                   <td className="px-4 py-2 text-center">
                     <span
                       className={cn(
@@ -996,6 +1334,27 @@ function TimeToRelease() {
         </table>
       </Card>
     </div>
+  );
+}
+
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  const w = 80;
+  const h = 24;
+  if (values.length === 0) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1 || 1)) * (w - 2) + 1;
+      const y = h - 1 - ((v - min) / span) * (h - 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg width={w} height={h} className="mx-auto block">
+      <polyline fill="none" stroke={color} strokeWidth={1.5} points={pts} />
+    </svg>
   );
 }
 

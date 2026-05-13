@@ -30,7 +30,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2 } from "lucide-react";
-import SalesPerformance from "@/components/SalesPerformance";
 
 // =================== shared helpers ===================
 const fmtAED = (n: number) =>
@@ -1088,7 +1087,6 @@ export default function OrgDesign() {
           <TabsTrigger value="capacity">Capacity Planner</TabsTrigger>
           <TabsTrigger value="ninebox">9-Box Matrix</TabsTrigger>
           <TabsTrigger value="sales">Sales Performance Matrix</TabsTrigger>
-          <TabsTrigger value="salesperf">Sales Performance</TabsTrigger>
         </TabsList>
         <TabsContent value="capacity" className="mt-6">
           <CapacityPlanner />
@@ -1098,9 +1096,6 @@ export default function OrgDesign() {
         </TabsContent>
         <TabsContent value="sales" className="mt-6">
           <SalesMatrix />
-        </TabsContent>
-        <TabsContent value="salesperf" className="mt-6">
-          <SalesPerformance />
         </TabsContent>
       </Tabs>
     </div>

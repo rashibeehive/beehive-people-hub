@@ -17,6 +17,7 @@ import Overview from "./pages/Overview";
 import OrgDesign from "./pages/OrgDesign";
 import Goals from "./pages/Goals";
 import StrategicOverview from "./pages/StrategicOverview";
+import SalesPerformancePage from "./pages/SalesPerformance";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/admin/cycles" element={<ComingSoon title="Review cycles" />} />
               <Route path="/overview" element={<Overview />} />
               <Route path="/org-design" element={<OrgDesign />} />
+              <Route path="/sales-performance" element={<SalesPerformancePage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
             </Routes>
