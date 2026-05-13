@@ -9,6 +9,8 @@ import {
   ResponsiveContainer,
   Legend,
   ReferenceLine,
+  ComposedChart,
+  Line,
 } from "recharts";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -42,13 +44,16 @@ import {
   AD_MONTHS,
   BD_REPS,
   CURRENT,
+  DISBURSEMENT_RATE_TARGET,
   GEO_TINTS,
   GEOGRAPHIES,
   HISTORICAL_MONTHS,
   HISTORICAL_TOTALS,
+  JAN_TOTALS,
   MONTHLY_BUDGETS,
   PRODUCTS_BY_GEO,
   TTR_BUCKETS,
+  TTR_BUCKET_MIDPOINTS,
   TTR_DATA,
   TTR_MONTHS,
   TTR_TARGETS,
