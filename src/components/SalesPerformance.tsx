@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
