@@ -2,12 +2,9 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   TrendingUp,
-  ClipboardCheck,
   Target,
-  Compass,
   Users,
   UserCog,
-  CalendarRange,
   BarChart3,
   Network,
   LineChart,
