@@ -9,7 +9,6 @@ import { AppLayout } from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Career from "./pages/Career";
-import Reviews from "./pages/Reviews";
 import AdminEmployees from "./pages/AdminEmployees";
 import Profile from "./pages/Profile";
 import ComingSoon from "./pages/ComingSoon";
@@ -18,6 +17,7 @@ import OrgDesign from "./pages/OrgDesign";
 import Goals from "./pages/Goals";
 import StrategicOverview from "./pages/StrategicOverview";
 import SalesPerformancePage from "./pages/SalesPerformance";
+import Incentives from "./pages/Incentives";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -68,13 +68,11 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/strategic-overview" element={<StrategicOverview />} />
               <Route path="/career" element={<Career />} />
-              <Route path="/reviews" element={<Reviews />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/goals" element={<Goals />} />
-              <Route path="/explore" element={<ComingSoon title="Explore roles" />} />
               <Route path="/admin/employees" element={<AdminEmployees />} />
               <Route path="/admin/talent" element={<ComingSoon title="Talent pool" />} />
-              <Route path="/admin/cycles" element={<ComingSoon title="Review cycles" />} />
+              <Route path="/admin/incentives" element={<Incentives />} />
               <Route path="/overview" element={<Overview />} />
               <Route path="/org-design" element={<OrgDesign />} />
               <Route path="/sales-performance" element={<SalesPerformancePage />} />
