@@ -1280,6 +1280,8 @@ function TimeToRelease() {
               <th className="px-4 py-2 text-left">Bucket</th>
               <th className="px-4 py-2 text-right">Target</th>
               <th className="px-4 py-2 text-right">{latest.label} Actual</th>
+              <th className="px-4 py-2 text-right">Delta</th>
+              <th className="px-4 py-2 text-center">Trend (last 5m)</th>
               <th className="px-4 py-2 text-center">Status</th>
             </tr>
           </thead>
@@ -1287,6 +1289,8 @@ function TimeToRelease() {
             {TTR_BUCKETS.map((b) => {
               const actual = TTR_DATA[TTR_MONTHS[TTR_MONTHS.length - 1]][b];
               const ok = ttrMeetsTarget(b, actual);
+              const series = TTR_MONTHS.map((m) => TTR_DATA[m][b]);
+              const delta = actual - TTR_TARGETS[b];
               return (
                 <tr key={b} className="border-b last:border-0">
                   <td className="px-4 py-2 font-medium text-foreground">
@@ -1298,6 +1302,19 @@ function TimeToRelease() {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{TTR_TARGETS[b]}%</td>
                   <td className="px-4 py-2 text-right font-semibold tabular-nums">{actual}%</td>
+                  <td className="px-4 py-2 text-right">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+                        ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+                      )}
+                    >
+                      {delta > 0 ? "+" : ""}{delta}pp
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Sparkline values={series} color={ok ? "#10B981" : "#EF4444"} />
+                  </td>
                   <td className="px-4 py-2 text-center">
                     <span
                       className={cn(
@@ -1317,6 +1334,27 @@ function TimeToRelease() {
         </table>
       </Card>
     </div>
+  );
+}
+
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  const w = 80;
+  const h = 24;
+  if (values.length === 0) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1 || 1)) * (w - 2) + 1;
+      const y = h - 1 - ((v - min) / span) * (h - 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg width={w} height={h} className="mx-auto block">
+      <polyline fill="none" stroke={color} strokeWidth={1.5} points={pts} />
+    </svg>
   );
 }
 
