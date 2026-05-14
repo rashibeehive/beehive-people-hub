@@ -875,7 +875,7 @@ function BudgetDrawer({
             entering a value overrides the derived figure.
           </p>
           <div className="pt-2">
-            <PillToggle
+            <PillToggle<"Monthly" | "Quarterly">
               options={[
                 { value: "Monthly", label: "Monthly" },
                 { value: "Quarterly", label: "Quarterly" },
