@@ -233,6 +233,7 @@ function FinanceWritten() {
   const [historical, setHistorical] = useState(HISTORICAL_TOTALS);
   const [weekly, setWeekly] = useState<WeeklyEntry[]>(WEEKLY_ENTRIES);
   const [budgets, setBudgets] = useState(MONTHLY_BUDGETS);
+  const [qBudgets, setQBudgets] = useState(QUARTERLY_BUDGET_OVERRIDES);
 
   // ---- Filters ----
   const [geoFilter, setGeoFilter] = useState<"All" | Geography>("All");
@@ -284,12 +285,24 @@ function FinanceWritten() {
       (s, p) => s + (historical[pkey(p.geo, p.product)]?.Apr ?? 0),
       0,
     );
-  const qtdBudget =
-    mtdBudget +
-    visibleProducts.reduce(
-      (s, p) => s + (budgets[pkey(p.geo, p.product)]?.Apr ?? 0),
-      0,
+  // QTD budget honours quarterly overrides: prorate the quarter override across its months
+  // so the "to-date" share through the current month is consistent with monthly attainment.
+  const currentQuarter = quarterOfMonth(CURRENT.monthLabel as YearMonth);
+  const qMonths = QUARTER_MONTHS[currentQuarter];
+  const monthsElapsedInQuarter = qMonths.indexOf(CURRENT.monthLabel as YearMonth) + 1;
+  const qtdBudget = visibleProducts.reduce((s, p) => {
+    const key = pkey(p.geo, p.product);
+    const override = qBudgets[key]?.[currentQuarter];
+    if (override !== undefined) {
+      return s + (override / qMonths.length) * monthsElapsedInQuarter;
+    }
+    return (
+      s +
+      qMonths
+        .slice(0, monthsElapsedInQuarter)
+        .reduce((acc, m) => acc + (budgets[key]?.[m] ?? 0), 0)
     );
+  }, 0);
 
   const ytdActual = visibleProducts.reduce((s, p) => {
     const h = historical[pkey(p.geo, p.product)] ?? { Feb: 0, Mar: 0, Apr: 0 };
@@ -343,25 +356,24 @@ function FinanceWritten() {
   }, [visibleProducts, historical, weekly, budgets, repFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const quarterlyByGeo = useMemo(() => {
-    const quarters: Record<string, string[]> = {
-      Q1: ["Jan", "Feb", "Mar"],
-      Q2: ["Apr", "May", "Jun"],
-      Q3: ["Jul", "Aug", "Sep"],
-      Q4: ["Oct", "Nov", "Dec"],
-    };
-    return Object.entries(quarters).map(([q, months]) => {
+    return QUARTERS.map((q) => {
       const row: Record<string, number | string> = { label: q, UAE: 0, Oman: 0, KSA: 0, Budget: 0 };
-      months.forEach((m) => {
+      // Sum actuals across the quarter from monthly rows.
+      QUARTER_MONTHS[q].forEach((m) => {
         const mr = monthlyByGeo.find((x) => x.label === m);
         if (!mr) return;
         (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => {
           row[g] = (row[g] as number) + (mr[g] as number);
         });
-        row.Budget = (row.Budget as number) + (mr.Budget as number);
       });
+      // Budget = sum of effective quarter budget across visible products (override-aware).
+      row.Budget = visibleProducts.reduce(
+        (s, p) => s + effectiveQuarterBudget(budgets, qBudgets, pkey(p.geo, p.product), q),
+        0,
+      );
       return row;
     });
-  }, [monthlyByGeo]);
+  }, [monthlyByGeo, visibleProducts, budgets, qBudgets]);
 
   return (
     <div className="space-y-6">
@@ -410,7 +422,12 @@ function FinanceWritten() {
           onChange={(v) => setPeriod(v)}
         />
         <div className="ml-auto">
-          <BudgetDrawer budgets={budgets} setBudgets={setBudgets} />
+          <BudgetDrawer
+            budgets={budgets}
+            setBudgets={setBudgets}
+            qBudgets={qBudgets}
+            setQBudgets={setQBudgets}
+          />
         </div>
       </div>
 
