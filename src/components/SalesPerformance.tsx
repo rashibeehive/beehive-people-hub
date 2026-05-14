@@ -64,6 +64,17 @@ import {
   type Geography,
   type WeeklyEntry,
 } from "@/data/salesPerformance";
+import {
+  QUARTERS,
+  QUARTER_MONTHS,
+  QUARTERLY_BUDGET_OVERRIDES,
+  YEAR_MONTHS,
+  derivedQuarterBudget,
+  effectiveQuarterBudget,
+  quarterOfMonth,
+  type Quarter,
+  type YearMonth,
+} from "@/data/salesPerformance";
 
 // ===== Helpers =====
 const fmt = (n: number, dp = 1) =>
@@ -222,6 +233,7 @@ function FinanceWritten() {
   const [historical, setHistorical] = useState(HISTORICAL_TOTALS);
   const [weekly, setWeekly] = useState<WeeklyEntry[]>(WEEKLY_ENTRIES);
   const [budgets, setBudgets] = useState(MONTHLY_BUDGETS);
+  const [qBudgets, setQBudgets] = useState(QUARTERLY_BUDGET_OVERRIDES);
 
   // ---- Filters ----
   const [geoFilter, setGeoFilter] = useState<"All" | Geography>("All");
@@ -273,12 +285,24 @@ function FinanceWritten() {
       (s, p) => s + (historical[pkey(p.geo, p.product)]?.Apr ?? 0),
       0,
     );
-  const qtdBudget =
-    mtdBudget +
-    visibleProducts.reduce(
-      (s, p) => s + (budgets[pkey(p.geo, p.product)]?.Apr ?? 0),
-      0,
+  // QTD budget honours quarterly overrides: prorate the quarter override across its months
+  // so the "to-date" share through the current month is consistent with monthly attainment.
+  const currentQuarter = quarterOfMonth(CURRENT.monthLabel as YearMonth);
+  const qMonths = QUARTER_MONTHS[currentQuarter];
+  const monthsElapsedInQuarter = qMonths.indexOf(CURRENT.monthLabel as YearMonth) + 1;
+  const qtdBudget = visibleProducts.reduce((s, p) => {
+    const key = pkey(p.geo, p.product);
+    const override = qBudgets[key]?.[currentQuarter];
+    if (override !== undefined) {
+      return s + (override / qMonths.length) * monthsElapsedInQuarter;
+    }
+    return (
+      s +
+      qMonths
+        .slice(0, monthsElapsedInQuarter)
+        .reduce((acc, m) => acc + (budgets[key]?.[m] ?? 0), 0)
     );
+  }, 0);
 
   const ytdActual = visibleProducts.reduce((s, p) => {
     const h = historical[pkey(p.geo, p.product)] ?? { Feb: 0, Mar: 0, Apr: 0 };
@@ -332,25 +356,24 @@ function FinanceWritten() {
   }, [visibleProducts, historical, weekly, budgets, repFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const quarterlyByGeo = useMemo(() => {
-    const quarters: Record<string, string[]> = {
-      Q1: ["Jan", "Feb", "Mar"],
-      Q2: ["Apr", "May", "Jun"],
-      Q3: ["Jul", "Aug", "Sep"],
-      Q4: ["Oct", "Nov", "Dec"],
-    };
-    return Object.entries(quarters).map(([q, months]) => {
+    return QUARTERS.map((q) => {
       const row: Record<string, number | string> = { label: q, UAE: 0, Oman: 0, KSA: 0, Budget: 0 };
-      months.forEach((m) => {
+      // Sum actuals across the quarter from monthly rows.
+      QUARTER_MONTHS[q].forEach((m) => {
         const mr = monthlyByGeo.find((x) => x.label === m);
         if (!mr) return;
         (["UAE", "Oman", "KSA"] as Geography[]).forEach((g) => {
           row[g] = (row[g] as number) + (mr[g] as number);
         });
-        row.Budget = (row.Budget as number) + (mr.Budget as number);
       });
+      // Budget = sum of effective quarter budget across visible products (override-aware).
+      row.Budget = visibleProducts.reduce(
+        (s, p) => s + effectiveQuarterBudget(budgets, qBudgets, pkey(p.geo, p.product), q),
+        0,
+      );
       return row;
     });
-  }, [monthlyByGeo]);
+  }, [monthlyByGeo, visibleProducts, budgets, qBudgets]);
 
   return (
     <div className="space-y-6">
@@ -399,7 +422,12 @@ function FinanceWritten() {
           onChange={(v) => setPeriod(v)}
         />
         <div className="ml-auto">
-          <BudgetDrawer budgets={budgets} setBudgets={setBudgets} />
+          <BudgetDrawer
+            budgets={budgets}
+            setBudgets={setBudgets}
+            qBudgets={qBudgets}
+            setQBudgets={setQBudgets}
+          />
         </div>
       </div>
 
@@ -777,76 +805,272 @@ function RollupCardImpl({
 function BudgetDrawer({
   budgets,
   setBudgets,
+  qBudgets,
+  setQBudgets,
 }: {
   budgets: Record<string, Record<string, number>>;
   setBudgets: React.Dispatch<React.SetStateAction<Record<string, Record<string, number>>>>;
+  qBudgets: Record<string, Partial<Record<Quarter, number>>>;
+  setQBudgets: React.Dispatch<
+    React.SetStateAction<Record<string, Partial<Record<Quarter, number>>>>
+  >;
 }) {
-  const months = [...HISTORICAL_MONTHS, CURRENT.monthLabel];
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"Monthly" | "Quarterly">("Monthly");
+  // Local drafts so edits aren't committed until "Save Changes".
+  const [draftMonthly, setDraftMonthly] = useState(budgets);
+  const [draftQuarterly, setDraftQuarterly] = useState(qBudgets);
+
+  // Re-seed drafts whenever the drawer is opened.
+  const onOpenChange = (next: boolean) => {
+    if (next) {
+      setDraftMonthly(budgets);
+      setDraftQuarterly(qBudgets);
+    }
+    setOpen(next);
+  };
+
+  const save = () => {
+    setBudgets(draftMonthly);
+    setQBudgets(draftQuarterly);
+    setOpen(false);
+  };
+
+  const allProducts = GEOGRAPHIES.flatMap((g) =>
+    PRODUCTS_BY_GEO[g].map((p) => ({ geo: g, product: p })),
+  );
+
+  // ---- Monthly view totals ----
+  const monthlyColTotal = (m: string) =>
+    allProducts.reduce((s, p) => s + (draftMonthly[pkey(p.geo, p.product)]?.[m] ?? 0), 0);
+  const productAnnual = (key: string) =>
+    YEAR_MONTHS.reduce((s, m) => s + (draftMonthly[key]?.[m] ?? 0), 0);
+
+  // ---- Quarterly view helpers ----
+  const quarterColTotal = (q: Quarter) =>
+    allProducts.reduce(
+      (s, p) =>
+        s +
+        effectiveQuarterBudget(draftMonthly, draftQuarterly, pkey(p.geo, p.product), q),
+      0,
+    );
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
           <Settings2 className="h-3.5 w-3.5" />
           Set Budgets
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[560px] overflow-y-auto sm:max-w-[560px]">
-        <SheetHeader>
-          <SheetTitle>Monthly Budgets</SheetTitle>
+      <SheetContent
+        side="right"
+        className="flex w-[min(96vw,1100px)] flex-col overflow-hidden p-0 sm:max-w-none"
+      >
+        <SheetHeader className="border-b px-6 py-4">
+          <SheetTitle>Budget Entry · {CURRENT.year}</SheetTitle>
           <p className="text-xs text-muted-foreground">
-            Quarterly and annual totals are auto-aggregated from monthly entries.
+            Edit monthly and quarterly budgets per product per geography. All values in
+            AEDMn. Quarterly figures shown in grey are derived from monthly inputs;
+            entering a value overrides the derived figure.
           </p>
+          <div className="pt-2">
+            <PillToggle<"Monthly" | "Quarterly">
+              options={[
+                { value: "Monthly", label: "Monthly" },
+                { value: "Quarterly", label: "Quarterly" },
+              ]}
+              value={view}
+              onChange={setView}
+            />
+          </div>
         </SheetHeader>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-2 py-2 text-left">Product</th>
-                {months.map((m) => (
-                  <th key={m} className="px-2 py-2 text-right">{m}</th>
-                ))}
-                <th className="border-l px-2 py-2 text-right">{CURRENT.quarter}</th>
-                <th className="px-2 py-2 text-right">YTD</th>
-              </tr>
-            </thead>
-            <tbody>
-              {GEOGRAPHIES.map((geo) => (
-                <Fragment key={geo}>
-                  <tr className={cn("border-b", GEO_TINTS[geo].headerBg)}>
-                    <td colSpan={months.length + 3} className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide">
-                      {geo}
-                    </td>
-                  </tr>
-                  {PRODUCTS_BY_GEO[geo].map((product) => {
-                    const key = pkey(geo, product);
-                    const b = budgets[key] ?? {};
-                    const qtr = (b.Apr ?? 0) + (b[CURRENT.monthLabel] ?? 0);
-                    const ytd = (b.Feb ?? 0) + (b.Mar ?? 0) + (b.Apr ?? 0) + (b[CURRENT.monthLabel] ?? 0);
-                    return (
-                      <tr key={key} className="border-b">
-                        <td className="px-2 py-1.5">{product}</td>
-                        {months.map((m) => (
-                          <td key={m} className="px-1 py-1">
-                            <EditableNum
-                              value={b[m] ?? 0}
-                              onChange={(v) =>
-                                setBudgets((prev) => ({
-                                  ...prev,
-                                  [key]: { ...prev[key], [m]: v },
-                                }))
-                              }
-                            />
+
+        <div className="flex-1 overflow-auto px-6 py-4">
+          {view === "Monthly" ? (
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="sticky left-0 z-10 min-w-[200px] bg-background px-2 py-2 text-left">
+                    Product
+                  </th>
+                  {YEAR_MONTHS.map((m) => (
+                    <th key={m} className="px-2 py-2 text-right">
+                      {m}
+                    </th>
+                  ))}
+                  <th className="border-l bg-muted/40 px-2 py-2 text-right">Annual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GEOGRAPHIES.map((geo) => (
+                  <Fragment key={geo}>
+                    <tr className={cn("border-b", GEO_TINTS[geo].headerBg)}>
+                      <td
+                        colSpan={YEAR_MONTHS.length + 2}
+                        className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                      >
+                        {geo}
+                      </td>
+                    </tr>
+                    {PRODUCTS_BY_GEO[geo].map((product) => {
+                      const key = pkey(geo, product);
+                      const b = draftMonthly[key] ?? {};
+                      return (
+                        <tr key={key} className="border-b">
+                          <td className="sticky left-0 z-10 bg-background px-2 py-1.5">
+                            {product}
                           </td>
-                        ))}
-                        <td className="border-l px-2 py-1 text-right text-xs font-medium tabular-nums">{fmt(qtr)}</td>
-                        <td className="px-2 py-1 text-right text-xs font-medium tabular-nums">{fmt(ytd)}</td>
-                      </tr>
-                    );
-                  })}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                          {YEAR_MONTHS.map((m) => (
+                            <td key={m} className="px-1 py-1">
+                              <EditableNum
+                                value={b[m] ?? 0}
+                                onChange={(v) =>
+                                  setDraftMonthly((prev) => ({
+                                    ...prev,
+                                    [key]: { ...prev[key], [m]: v },
+                                  }))
+                                }
+                              />
+                            </td>
+                          ))}
+                          <td className="border-l bg-muted/30 px-2 py-1 text-right text-xs font-semibold tabular-nums">
+                            {fmt(productAnnual(key))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+                <tr className="border-t-2 bg-muted/40 text-xs font-semibold">
+                  <td className="sticky left-0 z-10 bg-muted/40 px-2 py-2 text-left">
+                    Monthly total
+                  </td>
+                  {YEAR_MONTHS.map((m) => (
+                    <td key={m} className="px-2 py-2 text-right tabular-nums">
+                      {fmt(monthlyColTotal(m))}
+                    </td>
+                  ))}
+                  <td className="border-l bg-muted/60 px-2 py-2 text-right tabular-nums">
+                    {fmt(YEAR_MONTHS.reduce((s, m) => s + monthlyColTotal(m), 0))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="border-b text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <th className="sticky left-0 z-10 min-w-[220px] bg-background px-2 py-2 text-left">
+                    Product
+                  </th>
+                  {QUARTERS.map((q) => (
+                    <th key={q} className="px-2 py-2 text-right">
+                      {q}
+                    </th>
+                  ))}
+                  <th className="border-l bg-muted/40 px-2 py-2 text-right">Annual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GEOGRAPHIES.map((geo) => (
+                  <Fragment key={geo}>
+                    <tr className={cn("border-b", GEO_TINTS[geo].headerBg)}>
+                      <td
+                        colSpan={QUARTERS.length + 2}
+                        className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                      >
+                        {geo}
+                      </td>
+                    </tr>
+                    {PRODUCTS_BY_GEO[geo].map((product) => {
+                      const key = pkey(geo, product);
+                      const annual = QUARTERS.reduce(
+                        (s, q) =>
+                          s + effectiveQuarterBudget(draftMonthly, draftQuarterly, key, q),
+                        0,
+                      );
+                      return (
+                        <tr key={key} className="border-b align-top">
+                          <td className="sticky left-0 z-10 bg-background px-2 py-2">
+                            <div>{product}</div>
+                            <button
+                              className="mt-1 text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                              onClick={() =>
+                                setDraftQuarterly((prev) => ({ ...prev, [key]: {} }))
+                              }
+                            >
+                              Reset to Derived
+                            </button>
+                          </td>
+                          {QUARTERS.map((q) => {
+                            const override = draftQuarterly[key]?.[q];
+                            const isManual = override !== undefined;
+                            const derived = derivedQuarterBudget(draftMonthly, key, q);
+                            const value = isManual ? (override as number) : derived;
+                            return (
+                              <td key={q} className="px-2 py-2 text-right">
+                                <EditableNum
+                                  value={value}
+                                  onChange={(v) =>
+                                    setDraftQuarterly((prev) => ({
+                                      ...prev,
+                                      [key]: { ...(prev[key] ?? {}), [q]: v },
+                                    }))
+                                  }
+                                  className={cn(
+                                    isManual ? "text-foreground font-semibold" : "text-muted-foreground",
+                                  )}
+                                />
+                                <div className="mt-0.5 text-[9px] uppercase tracking-wide">
+                                  {isManual ? (
+                                    <span className="text-amber-600">Manual</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">Derived</span>
+                                  )}
+                                </div>
+                              </td>
+                            );
+                          })}
+                          <td className="border-l bg-muted/30 px-2 py-2 text-right text-xs font-semibold tabular-nums">
+                            {fmt(annual)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+                <tr className="border-t-2 bg-muted/40 text-xs font-semibold">
+                  <td className="sticky left-0 z-10 bg-muted/40 px-2 py-2 text-left">
+                    Quarterly total
+                  </td>
+                  {QUARTERS.map((q) => (
+                    <td key={q} className="px-2 py-2 text-right tabular-nums">
+                      {fmt(quarterColTotal(q))}
+                    </td>
+                  ))}
+                  <td className="border-l bg-muted/60 px-2 py-2 text-right tabular-nums">
+                    {fmt(QUARTERS.reduce((s, q) => s + quarterColTotal(q), 0))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-6 py-3">
+          <div className="text-[11px] text-muted-foreground">
+            Annual budget = sum of all monthly budgets. Quarterly overrides do not change
+            monthly inputs and apply only to QTD attainment & QoQ chart.
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={save}>
+              Save Changes
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

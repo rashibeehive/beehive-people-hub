@@ -155,15 +155,67 @@ export const WEEKLY_ENTRIES: WeeklyEntry[] = [
 
 /** MTD budget per product per month (AEDMn). */
 export const MONTHLY_BUDGETS: Record<ProductKey, Record<string, number>> = {
-  [pkey("UAE", "TF")]:              { Feb: 40, Mar: 42, Apr: 45, May: 50 },
-  [pkey("UAE", "EDB TF")]:          { Feb: 14, Mar: 15, Apr: 16, May: 18 },
-  [pkey("UAE", "WCF Utilisation")]: { Feb: 18, Mar: 20, Apr: 22, May: 24 },
-  [pkey("UAE", "WCF Activation")]:  { Feb:  5, Mar:  6, Apr:  7, May:  8 },
-  [pkey("Oman", "TF")]:             { Feb:  9, Mar: 10, Apr: 11, May: 12 },
-  [pkey("KSA", "GIB TF")]:          { Feb:  7, Mar:  8, Apr: 10, May: 12 },
-  [pkey("KSA", "GIB WCF")]:         { Feb:  4, Mar:  5, Apr:  6, May:  7 },
-  [pkey("KSA", "Themar-TF")]:       { Feb:  2, Mar:  3, Apr:  4, May:  5 },
+  [pkey("UAE", "TF")]:              { Jan: 36, Feb: 40, Mar: 42, Apr: 45, May: 50, Jun: 52, Jul: 54, Aug: 54, Sep: 56, Oct: 58, Nov: 60, Dec: 62 },
+  [pkey("UAE", "EDB TF")]:          { Jan: 12, Feb: 14, Mar: 15, Apr: 16, May: 18, Jun: 19, Jul: 20, Aug: 20, Sep: 21, Oct: 22, Nov: 23, Dec: 24 },
+  [pkey("UAE", "WCF Utilisation")]: { Jan: 17, Feb: 18, Mar: 20, Apr: 22, May: 24, Jun: 25, Jul: 26, Aug: 26, Sep: 27, Oct: 28, Nov: 29, Dec: 30 },
+  [pkey("UAE", "WCF Activation")]:  { Jan:  4, Feb:  5, Mar:  6, Apr:  7, May:  8, Jun:  8, Jul:  9, Aug:  9, Sep: 10, Oct: 10, Nov: 11, Dec: 12 },
+  [pkey("Oman", "TF")]:             { Jan:  8, Feb:  9, Mar: 10, Apr: 11, May: 12, Jun: 12, Jul: 13, Aug: 13, Sep: 14, Oct: 14, Nov: 15, Dec: 15 },
+  [pkey("KSA", "GIB TF")]:          { Jan:  6, Feb:  7, Mar:  8, Apr: 10, May: 12, Jun: 13, Jul: 14, Aug: 14, Sep: 15, Oct: 16, Nov: 17, Dec: 18 },
+  [pkey("KSA", "GIB WCF")]:         { Jan:  3, Feb:  4, Mar:  5, Apr:  6, May:  7, Jun:  8, Jul:  8, Aug:  9, Sep:  9, Oct: 10, Nov: 10, Dec: 11 },
+  [pkey("KSA", "Themar-TF")]:       { Jan:  2, Feb:  2, Mar:  3, Apr:  4, May:  5, Jun:  5, Jul:  6, Aug:  6, Sep:  7, Oct:  7, Nov:  8, Dec:  8 },
 };
+
+/** Quarter labels and the months that compose each quarter. */
+export const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
+export type Quarter = (typeof QUARTERS)[number];
+export const QUARTER_MONTHS: Record<Quarter, YearMonth[]> = {
+  Q1: ["Jan", "Feb", "Mar"],
+  Q2: ["Apr", "May", "Jun"],
+  Q3: ["Jul", "Aug", "Sep"],
+  Q4: ["Oct", "Nov", "Dec"],
+};
+
+/**
+ * Manual quarterly budget overrides (AEDMn) per product. Sparse — when an entry
+ * exists it overrides the derived sum-of-months for that quarter; otherwise the
+ * quarterly budget is computed from MONTHLY_BUDGETS.
+ */
+export const QUARTERLY_BUDGET_OVERRIDES: Record<ProductKey, Partial<Record<Quarter, number>>> = {
+  [pkey("UAE", "TF")]:              {},
+  [pkey("UAE", "EDB TF")]:          {},
+  [pkey("UAE", "WCF Utilisation")]: {},
+  [pkey("UAE", "WCF Activation")]:  {},
+  [pkey("Oman", "TF")]:             {},
+  [pkey("KSA", "GIB TF")]:          {},
+  [pkey("KSA", "GIB WCF")]:         {},
+  [pkey("KSA", "Themar-TF")]:       {},
+};
+
+/** Sum of monthly budgets in the given quarter for a product. */
+export function derivedQuarterBudget(
+  monthly: Record<ProductKey, Record<string, number>>,
+  key: ProductKey,
+  q: Quarter,
+): number {
+  return QUARTER_MONTHS[q].reduce((s, m) => s + (monthly[key]?.[m] ?? 0), 0);
+}
+
+/** Effective quarter budget — manual override if present, else derived. */
+export function effectiveQuarterBudget(
+  monthly: Record<ProductKey, Record<string, number>>,
+  overrides: Record<ProductKey, Partial<Record<Quarter, number>>>,
+  key: ProductKey,
+  q: Quarter,
+): number {
+  const ov = overrides[key]?.[q];
+  return ov !== undefined ? ov : derivedQuarterBudget(monthly, key, q);
+}
+
+/** Which quarter a given month belongs to. */
+export function quarterOfMonth(m: YearMonth): Quarter {
+  const i = YEAR_MONTHS.indexOf(m);
+  return QUARTERS[Math.floor(i / 3)];
+}
 
 export const ANNUAL_TARGET = 1000; // AEDMn (AED 1B)
 
