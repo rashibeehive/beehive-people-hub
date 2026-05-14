@@ -64,6 +64,17 @@ import {
   type Geography,
   type WeeklyEntry,
 } from "@/data/salesPerformance";
+import {
+  QUARTERS,
+  QUARTER_MONTHS,
+  QUARTERLY_BUDGET_OVERRIDES,
+  YEAR_MONTHS,
+  derivedQuarterBudget,
+  effectiveQuarterBudget,
+  quarterOfMonth,
+  type Quarter,
+  type YearMonth,
+} from "@/data/salesPerformance";
 
 // ===== Helpers =====
 const fmt = (n: number, dp = 1) =>
